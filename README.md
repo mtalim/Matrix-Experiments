@@ -21,7 +21,7 @@ Experimented with:
 TODOs:
 * mat_mul_outer_avx - using elementwise AVX _mm256_mullo_epi32
 * Automated graph and stats of multiple runs
-* Support non-square matrices
+* Support partial block remainders
 * -pendatic compiler flag doesn't like stack variable-length arrays; not ISO C++-compliant
 
 Example runs:\
