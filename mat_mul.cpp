@@ -1,19 +1,11 @@
 #include <iostream>
-#include <random>
-#include <chrono>
-#include <limits>
-#include <functional>
 #include <numeric>
+#include <functional>
+#include <random>
+#include <limits>
+#include <chrono>
+#include <utility>
 #include <cassert>
-
-using element_type = int;
-constexpr unsigned DIM_SCALE_X = 32;
-constexpr unsigned DIM_SCALE_Y = 8;
-constexpr unsigned BLK_DIM = 64;
-constexpr unsigned DIM_X = BLK_DIM * DIM_SCALE_X;
-constexpr unsigned DIM_Y = BLK_DIM * DIM_SCALE_Y;
-
-
 
 template <typename T>
 class Matrix
@@ -28,24 +20,13 @@ public:
     Matrix(unsigned row, unsigned column)
     {
         this->matrix = new T[row*column];
-        // for (auto r = 0; r < row; r++)
-        // {
-        //     matrix[r] = new T[column];
-        // }
         this->row = row;
         this->column = column;
     }
     Matrix(const Matrix& other) : Matrix(other.row, other.column)
     {
-        for (auto r = 0; r < row; r++)
-        {
-            T* A = (*this)[r];
-            T* B = other[r];
-            for (auto c = 0; c < column; c++)
-            {
-                A[c] = B[c];
-            }
-        }
+        for (auto i = 0; i < (row*column); i++)
+            this->matrix[i] = other.matrix[i];
     }
     Matrix(Matrix&& other) : matrix(other.matrix), row(other.row), column(other.column)
     {
@@ -56,10 +37,6 @@ public:
 
     ~Matrix()
     {
-        // for (auto r = 0; r < row; r++)
-        // {
-        //     delete[] matrix[r];
-        // }
         delete[] matrix;
     }
 
@@ -75,21 +52,10 @@ public:
                 this->column = other.column;
 
                 this->matrix = new T[row*column];
-                // for (auto r = 0; r < row; r++)
-                // {
-                //     matrix[r] = new T[column];
-                // }
             }
 
-            for (auto r = 0; r < row; r++)
-            {
-                T* A = (*this)[r];
-                T* B = other[r];
-                for (auto c = 0; c < column; c++)
-                {
-                    A[c] = B[c];
-                }
-            }
+            for (auto i = 0; i < (row*column); i++)
+                this->matrix[i] = other.matrix[i];
         }
         return *this;
     }
@@ -111,7 +77,7 @@ public:
         return *this;
     }
 
-    void display()
+    void display() const
     {
         for (auto r = 0; r < row; r++)
         {
@@ -124,16 +90,10 @@ public:
         }
     }
 
-    void rand_fill(std::function<int()> gen_rand)
+    void rand_fill(std::function<T()> gen_rand)
     {
-        for (auto r = 0; r < row; r++)
-        {
-            T* A = (*this)[r];
-            for (auto c = 0; c < column; c++)
-            {
-                A[c] = gen_rand();
-            }
-        }
+        for (auto i = 0; i < (row*column); i++)
+            matrix[i] = gen_rand();
     }
 
     T* operator[](unsigned r) const
@@ -146,36 +106,31 @@ public:
         if (row != other.row || column != other.column)
             return false;
 
-        for (auto r = 0; r < row; r++)
-        {
-            T* A = (*this)[r];
-            T* B = other[r];
-            for (auto c = 0; c < column; c++)
-            {
-                if (A[c] != B[c])
+        for (auto i = 0; i < (row*column); i++)
+            if (this->matrix[i] != other.matrix[i])
                     return false;
-            }
-        }
 
         return true;
     }
 
-    bool multipliable(const Matrix& other) const
+    static bool multipliable(const Matrix& a, const Matrix& b)
     {
-        return this->column == other.row;
+        return a.column == b.row;
     }
 
-    Matrix operator*(const Matrix& other) const
+    // Matrix operator*(const Matrix& b) const
+
+    static Matrix mat_mul_basic(const Matrix& a, const Matrix& b)
     {
-        assert(this->multipliable(other));
-        const auto res_row = this->row;
-        const auto res_col = other.column;
-        const auto vec_len = this->column; // same as other.row
+        assert(Matrix::multipliable(a, b));
+        const auto res_row = a.row;
+        const auto res_col = b.column;
+        const auto vec_len = a.column; // same as b.row
 
         Matrix<T> result(res_row, res_col);
         for (auto r = 0; r < res_row; r++)
         {
-            T* A = (*this)[r];
+            T* A = a[r];
             T* C = result[r];
             for (auto c = 0; c < res_col; c++)
             {
@@ -183,30 +138,30 @@ public:
 
                 for (auto i = 0; i < vec_len; i++)
                 {
-                    C[c] += A[i] * other[i][c];
+                    C[c] += A[i] * b[i][c];
                 }
             }
         }
         return result;
     }
 
-    Matrix mat_mul_trans(const Matrix& other) const
+    static Matrix mat_mul_trans(const Matrix& a, const Matrix& b)
     {
-        assert(this->multipliable(other));
-        const auto res_row = this->row;
-        const auto res_col = other.column;
-        const auto vec_len = this->column; // same as other.row
+        assert(Matrix::multipliable(a, b));
+        const auto res_row = a.row;
+        const auto res_col = b.column;
+        const auto vec_len = a.column; // same as b.row
 
         Matrix<T> result(res_row, res_col);
         T vec_b[vec_len]; ///\TODO -pendatic compile flag doesn't like stack variable-length arrays; not ISO C++ compliant
         for (auto c = 0; c < res_col; c++)
         {
             for (auto e = 0; e < vec_len; e++)
-                vec_b[e] = other[e][c];
+                vec_b[e] = b[e][c];
 
             for (auto r = 0; r < res_row; r++)
             {
-                T* A = (*this)[r];
+                T* A = a[r];
                 T* C = result[r];
                 C[c] = 0;
 
@@ -220,12 +175,12 @@ public:
     }
 
 
-    Matrix mat_mul_outer(const Matrix& other) const
+    static Matrix mat_mul_outer(const Matrix& a, const Matrix& b)
     {
-        assert(this->multipliable(other));
-        const auto res_row = this->row;
-        const auto res_col = other.column;
-        const auto vec_len = this->column; // same as other.row
+        assert(Matrix::multipliable(a, b));
+        const auto res_row = a.row;
+        const auto res_col = b.column;
+        const auto vec_len = a.column; // same as b.row
 
         Matrix<T> result(res_row, res_col);
         for (auto r = 0; r < res_row; r++)
@@ -241,8 +196,8 @@ public:
 
             for (auto i = 0; i < vec_len; i++)
             {
-                T A = (*this)[r][i];
-                T* B = other[i];
+                T A = a[r][i];
+                T* B = b[i];
                 for (auto c = 0; c < res_col; c++)
                 {
                     C[c] += A * B[c];
@@ -252,34 +207,35 @@ public:
         return result;
     }
 
-    Matrix mat_mul_avx(const Matrix& other) const
+    static Matrix mat_mul_avx(const Matrix& a, const Matrix& b)
     {
-        assert(this->multipliable(other));
-        const auto res_row = this->row;
-        const auto res_col = other.column;
-        const auto vec_len = this->column; // same as other.row
+        assert(Matrix::multipliable(a, b));
+        const auto res_row = a.row;
+        const auto res_col = b.column;
+        const auto vec_len = a.column; // same as b.row
 
         Matrix<T> result(res_row, res_col);
         T vec_b[vec_len];
         for (auto c = 0; c < res_col; c++)
         {
             for (auto e = 0; e < vec_len; e++)
-                vec_b[e] = other[e][c];
+                vec_b[e] = b[e][c];
 
             for (auto r = 0; r < res_row; r++)
             {
-                result[r][c] = std::inner_product(((*this)[r]), ((*this)[r])+vec_len, vec_b, 0);
+                result[r][c] = std::inner_product((a[r]), (a[r])+vec_len, vec_b, static_cast<T>(0));
             }
         }
         return result;
     }
 
-    Matrix mat_mul_cb(const Matrix& other) const
+    template <unsigned BLK_DIM>
+    static Matrix mat_mul_cb(const Matrix& a, const Matrix& b)
     {
-        assert(this->multipliable(other));
-        const auto res_row = this->row;
-        const auto res_col = other.column;
-        const auto vec_len = this->column; // same as other.row
+        assert(Matrix::multipliable(a, b));
+        const auto res_row = a.row;
+        const auto res_col = b.column;
+        const auto vec_len = a.column; // same as b.row
 
         Matrix<T> result(res_row, res_col);
         for (auto r = 0; r < res_row; r++)
@@ -306,12 +262,12 @@ public:
                 // for (auto b = 0; b < res_row; b+=BLK_DIM)
                 for (auto k = 0; k < vec_len ; k++)
                 {
-                    T* B = other[k];
+                    T* B = b[k];
                     // Partial products
                     for (auto i = r; i < r + BLK_DIM; i++)
                     {
                         T* C = result[i];
-                        T A = (*this)[i][k];
+                        T A = a[i][k];
                         for (auto j = c; j < c + BLK_DIM; j++)
                         // Vector product
                             C[j] += A * B[j];
@@ -322,12 +278,13 @@ public:
         return result;
     }
 
-    Matrix mat_mul_cb_avx(const Matrix& other) const
+    template <unsigned BLK_DIM>
+    static Matrix mat_mul_cb_avx(const Matrix& a, const Matrix& b)
     {
-        assert(this->multipliable(other));
-        const auto res_row = this->row;
-        const auto res_col = other.column;
-        const auto vec_len = this->column; // same as other.row
+        assert(Matrix::multipliable(a, b));
+        const auto res_row = a.row;
+        const auto res_col = b.column;
+        const auto vec_len = a.column; // same as b.row
 
         Matrix<T> result(res_row, res_col);
         T vec_b[BLK_DIM][vec_len];
@@ -344,7 +301,7 @@ public:
         {
             for (auto f = 0; f < BLK_DIM; f++)
             for (auto e = 0; e < vec_len; e++)
-                vec_b[f][e] = other[e][c+f];
+                vec_b[f][e] = b[e][c+f];
 
             for (auto r = 0; r < res_row; r+=BLK_DIM)
             {
@@ -353,7 +310,7 @@ public:
                 // Partial products
                 for (auto i = r; i < r + BLK_DIM; i++)
                 {
-                    T* A = (*this)[i];
+                    T* A = a[i];
                     for (auto j = c; j < c + BLK_DIM; j++)
                         result[i][j] = std::inner_product(A, A+vec_len, (vec_b[j-c]), result[i][j]);
                 }
@@ -364,9 +321,9 @@ public:
 };
 
 
-void time_run(std::function<void()> func, bool reset_baseline = false)
+void time_run(std::function<void()> func)
 {
-    static double baseline;
+    static double baseline = 0;
 
     auto start = std::chrono::high_resolution_clock::now();
     func();
@@ -374,73 +331,72 @@ void time_run(std::function<void()> func, bool reset_baseline = false)
     double duration = std::chrono::duration<double>(end - start).count();
 
     std::cout<< duration << "s";
-    if (reset_baseline)
-    {
-        baseline = duration;
-    }
-    else
+    if (baseline)
         std::cout<< " (" << (baseline/duration - 1)*100 << "% faster)";
+    else
+        baseline = duration;
     std::cout<< std::endl;
 }
 
 int main()
 {
-    Matrix<element_type> mat_a(DIM_Y,DIM_X), mat_b(DIM_X,DIM_Y), mat_x(DIM_Y,DIM_X), mat_y(DIM_X,DIM_Y);
+    using my_t = double;
+    constexpr unsigned DIM_SCALE_X = 24;
+    constexpr unsigned DIM_SCALE_Y = 6;
+    constexpr unsigned BLK_DIM = 96;
+    constexpr unsigned DIM_X = BLK_DIM * DIM_SCALE_X;
+    constexpr unsigned DIM_Y = BLK_DIM * DIM_SCALE_Y;
 
-    std::mt19937 rand_gen;
-    std::uniform_int_distribution<> dist(std::numeric_limits<element_type>::min(),
-                                         std::numeric_limits<element_type>::max());
+    Matrix<my_t> mat_a(DIM_Y,DIM_X), mat_b(DIM_X,DIM_Y), mat_x(DIM_Y,DIM_X), mat_y(DIM_X,DIM_Y);
 
-    mat_a.rand_fill([&rand_gen, &dist](){return dist(rand_gen);});
-    mat_b.rand_fill([&rand_gen, &dist](){return dist(rand_gen);});
-    mat_x.rand_fill([&rand_gen, &dist](){return dist(rand_gen);});
-    mat_y.rand_fill([&rand_gen, &dist](){return dist(rand_gen);});
+    std::mt19937_64 rand_gen;
+    std::uniform_int_distribution<uint64_t> dist(std::numeric_limits<uint64_t>::min(),
+                                                 std::numeric_limits<uint64_t>::max());
+    auto gen_rand = [&rand_gen, &dist]() -> uint64_t { return dist(rand_gen); };
 
-    std::cout<< "Block: " << (BLK_DIM*BLK_DIM * 3*sizeof(element_type)/1024)
-             << "KiB  Matrix: " << (DIM_X*DIM_Y * 3*sizeof(element_type)/1024)
-             << "KiB  Dim: " << DIM_Y << "x" << DIM_X << "x" << sizeof(element_type) << "B\n";
+    mat_a.rand_fill(gen_rand);
+    mat_b.rand_fill(gen_rand);
+    mat_x.rand_fill(gen_rand);
+    mat_y.rand_fill(gen_rand);
 
-    Matrix<element_type> mat[5];
+    std::pair<const char *, std::function<Matrix<my_t>(Matrix<my_t>&, Matrix<my_t>&)>> funcs[] = {
+        {"mat_mul_basic",  Matrix<my_t>::mat_mul_basic},
+        {"mat_mul_trans",  Matrix<my_t>::mat_mul_trans},
+        {"mat_mul_outer",  Matrix<my_t>::mat_mul_outer},
+        {"mat_mul_cb",     Matrix<my_t>::mat_mul_cb<BLK_DIM>},
+        {"mat_mul_avx",    Matrix<my_t>::mat_mul_avx},
+        {"mat_mul_cb_avx", Matrix<my_t>::mat_mul_cb_avx<BLK_DIM>},
+    };
 
     auto cache_warmup_clearing =
-        [&mat_a, &mat_b](Matrix<element_type>& mat){ mat = std::move(mat_a.mat_mul_avx(mat_b)); };
+        [&mat_a, &mat_b](Matrix<my_t>& mat){ mat = std::move(Matrix<my_t>::mat_mul_avx(mat_a, mat_b)); };
 
-    std::cout<< "mat_x * mat_y\t";
-    cache_warmup_clearing(mat[0]);
-    time_run([&](){mat[0] = std::move(mat_x * mat_y);}, true);
 
-    std::cout<< "mat_mul_trans\t";
-    cache_warmup_clearing(mat[1]);
-    time_run([&](){mat[1] = std::move(mat_x.mat_mul_trans(mat_y));});
 
-    std::cout<< "mat_mul_cb\t";
-    cache_warmup_clearing(mat[2]);
-    time_run([&](){mat[2] = std::move(mat_x.mat_mul_cb(mat_y));});
+    std::cout<< "Block: " << (BLK_DIM*BLK_DIM * 3*sizeof(my_t)/1024)
+             << "KiB  Matrix: " << (DIM_X*DIM_Y * 3*sizeof(my_t)/1024)
+             << "KiB  Dim: " << DIM_Y << "x" << DIM_X << "x" << sizeof(my_t) << "B\n";
 
-    std::cout<< "mat_mul_avx\t";
-    cache_warmup_clearing(mat[3]);
-    time_run([&](){mat[3] = std::move(mat_x.mat_mul_avx(mat_y));});
+    Matrix<my_t> prev_mat;
+    bool subsequent_run = false;
+    for (auto [name, func] : funcs)
+    {
+        Matrix<my_t> mat;
+        std::cout<< name << "\t";
+        cache_warmup_clearing(mat);
+        time_run([&](){mat = std::move(func(mat_x, mat_y));});
 
-    std::cout<< "mat_mul_cb_avx\t";
-    cache_warmup_clearing(mat[4]);
-    time_run([&](){mat[4] = std::move(mat_x.mat_mul_cb_avx(mat_y));});
+        // Check for consistent results
+        if (subsequent_run) assert(mat == prev_mat);
+        subsequent_run = true;
+        prev_mat = std::move(mat);
+    }
 
     ///\TODO mat_mul_outer_avx - using elementwise AVX _mm256_mullo_epi32
 
-
-    // mat_x.display();
-    // std::cout<< std::endl;
-    // mat_y.display();
-    // std::cout<< std::endl;
-    // mat[1].display();
-    // std::cout<< std::endl;
-
-    // check equality
-    std::cout<< (mat[0] == mat[1])
-             << (mat[0] == mat[2])
-             << (mat[0] == mat[3])
-             << (mat[0] == mat[4])
-             << std::endl;
+    // mat_x.display(); std::cout<< std::endl;
+    // mat_y.display(); std::cout<< std::endl;
+    // prev_mat.display(); std::cout<< std::endl;
 
     return 0;
 }

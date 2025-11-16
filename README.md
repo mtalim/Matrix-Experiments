@@ -25,18 +25,18 @@ TODOs:
 * -pendatic compiler flag doesn't like stack variable-length arrays; not ISO C++-compliant
 
 Example runs:\
-BLK_DIM = 64; DIM_SCALE = 16;\
-Block: 48KiB  Matrix: 12288KiB\
-mat_x * mat_y   6.33452s\
-mat_mul_trans   2.18891s (189.392% faster)\
-mat_mul_cb      2.16797s (192.187% faster)\
-mat_mul_avx     1.76828s (258.231% faster)\
-mat_mul_cb_avx  1.73681s (264.722% faster)\
+Block: 216KiB  Matrix: 31104KiB  Dim: 576x2304x8B\
+mat_mul_basic   6.73906s\
+mat_mul_trans   1.59309s (323.018% faster)\
+mat_mul_outer   1.5109s (346.029% faster)\
+mat_mul_cb      1.56221s (331.378% faster)\
+mat_mul_avx     1.57897s (326.802% faster)\
+mat_mul_cb_avx  1.48891s (352.617% faster)\
 
-BLK_DIM = 64; DIM_SCALE = 12;\
-Block: 48KiB  Matrix: 6912KiB\
-mat_x * mat_y   2.66931s\
-mat_mul_trans   1.01581s (162.776% faster)\
-mat_mul_cb      0.99345s (168.691% faster)\
-mat_mul_avx     0.797958s (234.517% faster)\
-mat_mul_cb_avx  0.795014s (235.756% faster)\
+Block: 216KiB  Matrix: 31104KiB  Dim: 2304x576x8B\
+mat_mul_basic   23.6424s\
+mat_mul_trans   6.49252s (264.148% faster)\
+mat_mul_outer   6.05718s (290.32% faster)\
+mat_mul_cb      6.29285s (275.702% faster)\
+mat_mul_avx     9.25121s (155.56% faster)\
+mat_mul_cb_avx  5.97142s (295.926% faster)\
