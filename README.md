@@ -25,18 +25,24 @@ TODOs:
 * -pendatic compiler flag doesn't like stack variable-length arrays; not ISO C++-compliant
 
 Example runs:\
-Block: 216KiB  Matrix: 31104KiB  Dim: 576x2304x8B\
-mat_mul_basic   6.73906s\
-mat_mul_trans   1.59309s (323.018% faster)\
-mat_mul_outer   1.5109s (346.029% faster)\
-mat_mul_cb      1.56221s (331.378% faster)\
-mat_mul_avx     1.57897s (326.802% faster)\
-mat_mul_cb_avx  1.48891s (352.617% faster)\
+g++ mat_mul.cpp -std=c++11 -DNDEBUG -O3
 
-Block: 216KiB  Matrix: 31104KiB  Dim: 2304x576x8B\
-mat_mul_basic   23.6424s\
-mat_mul_trans   6.49252s (264.148% faster)\
-mat_mul_outer   6.05718s (290.32% faster)\
-mat_mul_cb      6.29285s (275.702% faster)\
-mat_mul_avx     9.25121s (155.56% faster)\
-mat_mul_cb_avx  5.97142s (295.926% faster)\
+Block: 216KiB  Matrix: 23328KiB  Dim: 576x2304x8B
+| Algo           | Run Time  | Relative Performance |
+|----------------|-----------|----------------------|
+| mat_mul_basic  | 3.91783s  |                      |
+| mat_mul_trans  | 0.704344s | 456.238% faster      |
+| mat_mul_outer  | 0.311173s | 1159.05% faster      |
+| mat_mul_cb     | 0.204791s | 1813.09% faster      |
+| mat_mul_avx    | 0.679368s | 476.688% faster      |
+| mat_mul_cb_avx | 0.625565s | 526.287% faster      |
+
+Block: 216KiB  Matrix: 62208KiB  Dim: 2304x576x8B
+| Algo           | Run Time  | Relative Performance |
+|----------------|-----------|----------------------|
+| mat_mul_basic  | 4.8989s   |                      |
+| mat_mul_trans  | 2.75747s  | 77.659% faster       |
+| mat_mul_outer  | 1.03353s  | 373.995% faster      |
+| mat_mul_cb     | 0.742521s | 559.766% faster      |
+| mat_mul_avx    | 2.58337s  | 89.6323% faster      |
+| mat_mul_cb_avx | 2.38049s  | 105.794% faster      |
